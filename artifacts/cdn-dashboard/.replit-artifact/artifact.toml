@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "CDN Admin Dashboard"
+version = "1.0.0"
+id = "artifacts/cdn-dashboard"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20253
+
+[services.development]
+run = "pnpm --filter @workspace/cdn-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cdn-dashboard", "run", "build" ]
+publicDir = "artifacts/cdn-dashboard/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20253"
+BASE_PATH = "/"

@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: nexuscdn_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexuscdn
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: nexuscdn
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nexuscdn_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexuscdn -d nexuscdn"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexuscdn_api
+    restart: unless-stopped
+    privileged: true
+    pid: host
+    environment:
+      PORT: 8080
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - nexuscdn_net
+    volumes:
+      - /etc/nginx:/host/etc/nginx
+      - /etc/letsencrypt:/host/etc/letsencrypt
+
+networks:
+  nexuscdn_net:
+    driver: bridge
+
+volumes:
+  postgres_data:

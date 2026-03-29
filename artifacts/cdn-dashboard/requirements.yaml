@@ -1,0 +1,16 @@
+packages:
+  "recharts": "For analytics charts on dashboard"
+  "framer-motion": "For page transitions and polished UI interactions"
+  "date-fns": "For formatting dates"
+  "lucide-react": "For icons"
+  "clsx": "For conditional class names"
+  "tailwind-merge": "For conditional class names"
+  "sonner": "For beautiful toast notifications"
+
+images:
+  - path: "artifacts/cdn-dashboard/public/images/network-bg.png"
+    description: "Abstract 3D network visualization with glowing nodes and cyan/blue connections on a deep dark slate background, representing a global CDN infrastructure. Cinematic lighting, highly technical and professional."
+    aspect_ratio: "16:9"
+
+notes:
+  - Using @workspace/api-client-react hooks directly since they provide full TanStack Query integration.
