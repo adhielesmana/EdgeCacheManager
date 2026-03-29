@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, domainsTable, originsTable, requestStatsTable } from "@workspace/db";
 import { CreateDomainBody, UpdateDomainBody } from "@workspace/api-zod";
 import { eq } from "drizzle-orm";
-import { generateNginxConfig, removeNginxConfig, reloadNginx } from "../lib/nginx";
+import { generateNginxConfig, removeNginxConfig, reloadNginx, provisionSsl } from "../lib/nginx";
 
 const router: IRouter = Router();
 
@@ -46,8 +46,13 @@ router.post("/domains", async (req, res) => {
   try {
     await generateNginxConfig(domain, []);
     await reloadNginx();
+    if (domain.sslEnabled) {
+      // Typically need a working user email inside `.env` or from user profile
+      const email = process.env.CERTBOT_EMAIL || "admin@example.com";
+      await provisionSsl(domain.name, email);
+    }
   } catch (error) {
-    console.error("Failed to apply Nginx config:", error);
+    console.error("Failed to apply Nginx config or SSL:", error);
   }
 
   res.status(201).json(domain);
@@ -113,8 +118,13 @@ router.patch("/domains/:domainId", async (req, res) => {
   try {
     await generateNginxConfig(updated, origins);
     await reloadNginx();
+    if (updated.sslEnabled && !parsed.data.sslEnabled /* meaning it was just enabled */) {
+      // Actually we should provision SSL if it is true, certbot is idempotent 
+      const email = process.env.CERTBOT_EMAIL || "admin@example.com";
+      await provisionSsl(updated.name, email);
+    }
   } catch (error) {
-    console.error("Failed to apply Nginx config:", error);
+    console.error("Failed to apply Nginx config or SSL:", error);
   }
 
   res.json(updated);

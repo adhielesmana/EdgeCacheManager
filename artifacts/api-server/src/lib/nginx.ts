@@ -117,3 +117,10 @@ export async function removeNginxConfig(domainName: string) {
   try { await fs.unlink(enabledPath); } catch(e) {}
   try { await fs.unlink(configPath); } catch(e) {}
 }
+
+export async function purgeNginxCache() {
+  // Purging cache directory logic
+  // Nginx relies on standard proxy_cache paths. By default or if we specified `proxy_cache_path /var/cache/nginx/nexuscdn`, we'd delete its contents.
+  // Using a blanket wipe and reload for all cache via host execution:
+  await execOnHost('rm -rf /var/cache/nginx/* && systemctl reload nginx');
+}

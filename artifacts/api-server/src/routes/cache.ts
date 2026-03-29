@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, requestStatsTable, domainsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { purgeNginxCache } from "../lib/nginx";
 
 const router: IRouter = Router();
 
@@ -35,6 +36,12 @@ router.post("/domains/:domainId/cache/purge", async (req, res) => {
     .update(requestStatsTable)
     .set({ cachedFiles: 0, cacheSize: 0, updatedAt: new Date() })
     .where(eq(requestStatsTable.domainId, domainId));
+
+  try {
+    await purgeNginxCache();
+  } catch (err) {
+    console.error(`Failed to physically purge host Nginx cache: ${err}`);
+  }
 
   res.json({
     purgedCount,
