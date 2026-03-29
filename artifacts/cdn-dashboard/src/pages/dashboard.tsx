@@ -21,7 +21,11 @@ const generateMockTraffic = (totalBytes: number) => {
 };
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = useGetStats();
+  const { data: stats, isLoading } = useGetStats({
+    query: {
+      refetchInterval: 3000,
+    }
+  });
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64"><Activity className="h-8 w-8 text-primary animate-spin" /></div>;

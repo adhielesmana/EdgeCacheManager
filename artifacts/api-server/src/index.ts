@@ -1,6 +1,8 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { seedSuperAdmin } from "./lib/seed";
+import { startLogTailer } from "./lib/logParser";
+import { startHealthChecker } from "./lib/healthCheck";
 
 const rawPort = process.env["PORT"];
 
@@ -24,4 +26,10 @@ app.listen(port, async (err) => {
 
   logger.info({ port }, "Server listening");
   await seedSuperAdmin();
+  
+  // Start the Nginx live stats parser daemon
+  startLogTailer();
+  
+  // Start the Active Origin Health Checker
+  startHealthChecker();
 });

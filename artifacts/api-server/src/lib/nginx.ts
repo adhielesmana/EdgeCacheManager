@@ -59,27 +59,50 @@ upstream ${upstreamName} {
 ${upstreams}
 }
 
+# Rate limiting zone per IP (10 requests per second)
+limit_req_zone $binary_remote_addr zone=nexus_limit_${safeName}:10m rate=10r/s;
+
 server {
     listen 80;
     server_name ${safeName};
 
+    # Logging definition for log parser (JSON format)
+    access_log /var/log/nginx/nexuscdn_access.log combined;
+    error_log /var/log/nginx/nexuscdn_error.log warn;
+
     location / {
+        limit_req zone=nexus_limit_${safeName} burst=20 nodelay;
+
         proxy_pass http://${upstreamName};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Buffer Optimization
+        proxy_buffers 16 16k;  
+        proxy_buffer_size 16k;
+        proxy_busy_buffers_size 32k;
+        client_max_body_size 50M;
+
+        # Keepalive properties
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
 `;
 
   if (domain.cacheEnabled) {
       config += `
         proxy_cache nexuscdn;
+        proxy_cache_key "$scheme$request_method$host$request_uri";
         proxy_cache_valid 200 302 ${domain.cacheTtl}s;
         proxy_cache_valid 404 1m;
         proxy_cache_use_stale error timeout http_500 http_502 http_503 http_504;
+        proxy_cache_lock on;
+        proxy_cache_background_update on;
         add_header X-Cache-Status $upstream_cache_status;
 `;
   }
+
 
   config += `
     }
