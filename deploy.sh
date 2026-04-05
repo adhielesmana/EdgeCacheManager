@@ -4,6 +4,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$ROOT/.env"
 
+APT_UPDATED=0
+
+apt_install() {
+  if [ $APT_UPDATED -eq 0 ]; then
+    apt-get update
+    APT_UPDATED=1
+  fi
+  DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
+}
+
 if [ "$EUID" -ne 0 ]; then
   echo "Deploying requires root privileges because we manage Docker/Nginx." >&2
   echo "Run this script via sudo or as root." >&2
@@ -22,36 +32,52 @@ fi
 DOMAIN="$1"
 EMAIL="$2"
 
+if ! command -v node >/dev/null 2>&1; then
+  echo "Node.js missing; installing Node.js via NodeSource..."
+  apt_install curl ca-certificates gnupg
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  APT_UPDATED=0
+  apt_install nodejs
+fi
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "pnpm missing; installing globally via npm..."
+  npm install -g pnpm
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker missing; installing docker.io + compose plugin from Debian repos..."
+  apt_install docker.io docker-compose-plugin
+fi
+
 if [ ! -f "$ENV_FILE" ] && [ -f "$ROOT/.env.example" ]; then
   cp "$ROOT/.env.example" "$ENV_FILE"
   echo "Copied .env.example to .env; review/fill any missing values."
 fi
 
+touch "$ENV_FILE"
+
 update_env() {
   local key=$1 value=$2
-  node - "$ENV_FILE" "$key" "$value" <<'NODE'
-const [file, key, value] = process.argv.slice(1);
-const fs = require("fs");
-const path = require("path");
+  local tmp
+  tmp="$(mktemp)"
 
-const filePath = path.resolve(file);
-let text = "";
-if (fs.existsSync(filePath)) {
-  text = fs.readFileSync(filePath, "utf8");
-}
+  awk -F= -v key="$key" -v value="$value" '
+    BEGIN { updated = 0 }
+    $1 == key {
+      print key "=" value
+      updated = 1
+      next
+    }
+    { print }
+    END {
+      if (!updated) {
+        print key "=" value
+      }
+    }
+  ' "$ENV_FILE" > "$tmp"
 
-const regex = new RegExp(`^${key}=.*$`, "m");
-if (regex.test(text)) {
-  text = text.replace(regex, `${key}=${value}`);
-} else {
-  if (text && !text.endsWith("\n")) {
-    text += "\n";
-  }
-  text += `${key}=${value}\n`;
-}
-
-fs.writeFileSync(filePath, text);
-NODE
+  mv "$tmp" "$ENV_FILE"
 }
 
 get_env_value() {
@@ -63,7 +89,7 @@ get_env_value() {
 
 generate_hex() {
   local bytes=$1
-  node -e "console.log(require('crypto').randomBytes(${bytes}).toString('hex'))"
+  head -c "$bytes" /dev/urandom | od -An -tx1 | tr -d ' \n'
 }
 
 ensure_env() {
@@ -93,40 +119,13 @@ ensure_env POSTGRES_PASSWORD "$POSTGRES_PASSWORD"
 ensure_env SESSION_SECRET "$SESSION_SECRET"
 ensure_env DATABASE_URL "postgresql://nexuscdn:${POSTGRES_PASSWORD}@db:5432/nexuscdn"
 
-APT_UPDATED=0
-apt_install() {
-  if [ $APT_UPDATED -eq 0 ]; then
-    apt-get update
-    APT_UPDATED=1
-  fi
-  DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
-}
-
-if ! command -v node >/dev/null 2>&1; then
-  echo "Node.js missing; installing Node.js via NodeSource..."
-  apt_install curl ca-certificates gnupg
-  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-  APT_UPDATED=0
-  apt_install nodejs
-fi
-
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo "pnpm missing; installing globally via npm..."
-  npm install -g pnpm
-fi
-
 cd "$ROOT"
 
 pnpm install
 PORT=5173 BASE_PATH=/ pnpm run build
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "Docker missing; installing docker.io + compose plugin from Debian repos..."
-  apt_install docker.io docker-compose-plugin
-fi
-
 export COMPOSE_PROJECT_NAME=nexuscdn
-docker compose pull --quiet
-docker compose up -d --build
+docker compose --env-file "$ENV_FILE" pull --quiet
+docker compose --env-file "$ENV_FILE" up -d --build
 
 echo "Deployment complete. Visit https://${DOMAIN} once DNS is pointed to this host."
