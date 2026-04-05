@@ -1,4 +1,4 @@
-import { useGetStats } from "@workspace/api-client-react";
+import { getGetStatsQueryKey, useGetStats } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatBytes, formatNumber } from "@/lib/utils";
 import { Globe, HardDrive, Activity, Zap, Server } from "lucide-react";
@@ -23,8 +23,9 @@ const generateMockTraffic = (totalBytes: number) => {
 export default function Dashboard() {
   const { data: stats, isLoading } = useGetStats({
     query: {
+      queryKey: getGetStatsQueryKey(),
       refetchInterval: 3000,
-    }
+    },
   });
 
   if (isLoading) {

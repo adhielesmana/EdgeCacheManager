@@ -4,17 +4,23 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
   className?: string;
 }
 
-export function Dialog({ open, onOpenChange, children, className }: DialogProps) {
+export function Dialog({ open = false, onOpenChange, children, className }: DialogProps) {
+  const handleClose = () => {
+    onOpenChange?.(false);
+  };
+
   React.useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "unset";
-    return () => { document.body.style.overflow = "unset"; };
+    return () => {
+      document.body.style.overflow = "unset";
+    };
   }, [open]);
 
   return (
@@ -25,7 +31,7 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
             className="absolute inset-0 bg-background/80 backdrop-blur-sm"
           />
           <motion.div
@@ -39,7 +45,7 @@ export function Dialog({ open, onOpenChange, children, className }: DialogProps)
             )}
           >
             <button
-              onClick={() => onOpenChange(false)}
+              onClick={handleClose}
               className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-foreground transition-colors"
             >
               <X className="h-4 w-4" />

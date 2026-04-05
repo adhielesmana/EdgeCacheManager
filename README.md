@@ -110,13 +110,15 @@ Clone the repository and run the deployment script as root:
 ```bash
 git clone https://github.com/adhielesmana/EdgeCacheManager.git
 cd EdgeCacheManager
-sudo bash .deploy.sh <your-domain.com> <your-email@example.com>
+sudo bash deploy.sh <your-domain.com> <your-email@example.com>
 ```
 
 **Example:**
 ```bash
-sudo bash .deploy.sh cdn.mycompany.com admin@mycompany.com
+sudo bash deploy.sh cdn.mycompany.com admin@mycompany.com
 ```
+
+Every time you pull new changes in an existing deployment, run `sudo bash update.sh` from the project root to refresh dependencies, rebuild both front-end and back-end bundles (including the mockup sandbox), and restart the Docker services so that the latest code is live.
 
 ### What the script does
 
