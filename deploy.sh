@@ -29,23 +29,29 @@ fi
 
 update_env() {
   local key=$1 value=$2
-  python - "$key" "$value" "$ENV_FILE" <<'PY'
-from pathlib import Path
-import re, sys
+  node <<'NODE' "$ENV_FILE" "$key" "$value"
+const [file, key, value] = process.argv.slice(1);
+const fs = require("fs");
+const path = require("path");
 
-key, value, file_path = sys.argv[1], sys.argv[2], sys.argv[3]
-path = Path(file_path)
-text = path.read_text() if path.exists() else ""
+const filePath = path.resolve(file);
+let text = "";
+if (fs.existsSync(filePath)) {
+  text = fs.readFileSync(filePath, "utf8");
+}
 
-if re.search(rf"^{key}=.*$", text, flags=re.M):
-    text = re.sub(rf"^{key}=.*$", f"{key}={value}", text, flags=re.M)
-else:
-    if text and not text.endswith("\n"):
-        text += "\n"
-    text += f"{key}={value}\n"
+const regex = new RegExp(`^${key}=.*$`, "m");
+if (regex.test(text)) {
+  text = text.replace(regex, `${key}=${value}`);
+} else {
+  if (text && !text.endsWith("\n")) {
+    text += "\n";
+  }
+  text += `${key}=${value}\n`;
+}
 
-path.write_text(text)
-PY
+fs.writeFileSync(filePath, text);
+NODE
 }
 update_env DOMAIN "$DOMAIN"
 update_env NODE_ENV production
