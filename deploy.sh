@@ -92,6 +92,13 @@ generate_hex() {
   head -c "$bytes" /dev/urandom | od -An -tx1 | tr -d ' \n'
 }
 
+remove_named_container() {
+  local name=$1
+  if docker container inspect "$name" >/dev/null 2>&1; then
+    docker rm -f "$name" >/dev/null 2>&1 || true
+  fi
+}
+
 ensure_env() {
   local key=$1 value=$2
   local current
@@ -126,6 +133,8 @@ PORT=5173 BASE_PATH=/ pnpm run build
 
 export COMPOSE_PROJECT_NAME=nexuscdn
 docker compose --env-file "$ENV_FILE" pull --quiet
+remove_named_container nexuscdn_api
+remove_named_container nexuscdn_db
 docker compose --env-file "$ENV_FILE" up -d --build
 
 echo "Deployment complete. Visit https://${DOMAIN} once DNS is pointed to this host."

@@ -13,6 +13,13 @@ apt_install() {
   DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
 }
 
+remove_named_container() {
+  local name=$1
+  if docker container inspect "$name" >/dev/null 2>&1; then
+    docker rm -f "$name" >/dev/null 2>&1 || true
+  fi
+}
+
 if [ "$EUID" -ne 0 ]; then
   echo "Updating the deployment requires privileges to restart Docker/Nginx; run as root or via sudo." >&2
   exit 1
@@ -55,6 +62,8 @@ fi
 
 export COMPOSE_PROJECT_NAME=nexuscdn
 docker compose --env-file "$ENV_FILE" pull --quiet
+remove_named_container nexuscdn_api
+remove_named_container nexuscdn_db
 docker compose --env-file "$ENV_FILE" up -d --build
 
 echo "Update complete; services were rebuilt and restarted."
