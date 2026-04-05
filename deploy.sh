@@ -57,9 +57,26 @@ update_env DOMAIN "$DOMAIN"
 update_env NODE_ENV production
 update_env CERTBOT_EMAIL "$EMAIL"
 
+APT_UPDATED=0
+apt_install() {
+  if [ $APT_UPDATED -eq 0 ]; then
+    apt-get update
+    APT_UPDATED=1
+  fi
+  DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
+}
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "Node.js missing; installing Node.js via NodeSource..."
+  apt_install curl ca-certificates gnupg
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  APT_UPDATED=0
+  apt_install nodejs
+fi
+
 if ! command -v pnpm >/dev/null 2>&1; then
-  echo "pnpm is required; install it from https://pnpm.io" >&2
-  exit 1
+  echo "pnpm missing; installing globally via npm..."
+  npm install -g pnpm
 fi
 
 cd "$ROOT"
@@ -68,8 +85,8 @@ pnpm install
 PORT=5173 BASE_PATH=/ pnpm run build
 
 if ! command -v docker >/dev/null 2>&1; then
-  echo "Docker is required to bring up services." >&2
-  exit 1
+  echo "Docker missing; installing docker.io + compose plugin from Debian repos..."
+  apt_install docker.io docker-compose-plugin
 fi
 
 docker compose pull --quiet

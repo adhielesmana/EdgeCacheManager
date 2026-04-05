@@ -105,7 +105,7 @@ The deployment script handles all other dependencies automatically.
 
 ### One-Command Deploy
 
-Clone the repository and run the deployment script as root:
+Clone the repository and run the deployment script as root. On Debian hosts the script will automatically install Node.js, pnpm, and Docker before building the code:
 
 ```bash
 git clone https://github.com/adhielesmana/EdgeCacheManager.git
