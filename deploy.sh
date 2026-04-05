@@ -29,7 +29,7 @@ fi
 
 update_env() {
   local key=$1 value=$2
-  node <<'NODE' "$ENV_FILE" "$key" "$value"
+  node - "$ENV_FILE" "$key" "$value" <<'NODE'
 const [file, key, value] = process.argv.slice(1);
 const fs = require("fs");
 const path = require("path");
