@@ -53,9 +53,45 @@ if (regex.test(text)) {
 fs.writeFileSync(filePath, text);
 NODE
 }
+
+get_env_value() {
+  local key=$1
+  if [ -f "$ENV_FILE" ]; then
+    sed -n "s/^${key}=//p" "$ENV_FILE" | tail -n 1
+  fi
+}
+
+generate_hex() {
+  local bytes=$1
+  node -e "console.log(require('crypto').randomBytes(${bytes}).toString('hex'))"
+}
+
+ensure_env() {
+  local key=$1 value=$2
+  local current
+  current="$(get_env_value "$key")"
+  if [ -z "$current" ]; then
+    update_env "$key" "$value"
+  fi
+}
+
 update_env DOMAIN "$DOMAIN"
 update_env NODE_ENV production
 update_env CERTBOT_EMAIL "$EMAIL"
+
+POSTGRES_PASSWORD="$(get_env_value POSTGRES_PASSWORD)"
+if [ -z "$POSTGRES_PASSWORD" ]; then
+  POSTGRES_PASSWORD="$(generate_hex 24)"
+fi
+
+SESSION_SECRET="$(get_env_value SESSION_SECRET)"
+if [ -z "$SESSION_SECRET" ]; then
+  SESSION_SECRET="$(generate_hex 32)"
+fi
+
+ensure_env POSTGRES_PASSWORD "$POSTGRES_PASSWORD"
+ensure_env SESSION_SECRET "$SESSION_SECRET"
+ensure_env DATABASE_URL "postgresql://nexuscdn:${POSTGRES_PASSWORD}@db:5432/nexuscdn"
 
 APT_UPDATED=0
 apt_install() {
@@ -89,6 +125,7 @@ if ! command -v docker >/dev/null 2>&1; then
   apt_install docker.io docker-compose-plugin
 fi
 
+export COMPOSE_PROJECT_NAME=nexuscdn
 docker compose pull --quiet
 docker compose up -d --build
 
